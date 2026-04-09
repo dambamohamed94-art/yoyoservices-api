@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+ 
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum ProductStockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PENDING
+  AWAITING_VALIDATION
+  PAID
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  SUBMITTED
+  VERIFIED
+  FAILED
+}
+
+enum StockMovementType {
+  IN
+  OUT
+}
+
+enum StockMovementReason {
+  RESTOCK
+  ORDER_VALIDATED
+  MANUAL_ADJUSTMENT
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  phone         String   @unique
+  email         String   @unique
+  passwordHash  String
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  resetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String
+  token      String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  imageUrl        String?
+  backgroundColor String?
+  displayOrder    Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  products        Product[]
+}
+
+model Product {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  description String?
+  price       Float
+  quantity    Int                @default(0)
+  stockStatus ProductStockStatus @default(IN_STOCK)
+  imageUrl    String?
+  isActive    Boolean            @default(true)
+  isFeatured  Boolean            @default(false)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+  movements  StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StoreSettings {
+  id                 String   @id @default(cuid())
+  storeName          String
+  whatsappNumber     String
+  orangeMerchantCode String
+  currency           String   @default("FCFA")
+  address            String?
+  phone              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  reference String      @unique
+  status    OrderStatus @default(PENDING)
+
+  customerFirstName String
+  customerLastName  String
+  customerPhone     String
+  customerDistrict  String
+
+  totalAmount    Float
+  paymentMethod  String  @default("ORANGE_MONEY")
+  validationCode String?
+
+  items   OrderItem[]
+  payment Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id                  String @id @default(cuid())
+  orderId             String
+  productId           String
+  productNameSnapshot String
+  unitPrice           Float
+  quantity            Int
+  lineTotal           Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  provider          String        @default("ORANGE_MONEY")
+  providerReference String?
+  merchantCode      String?
+  validationCode    String?
+  customerPhone     String
+  amount            Float
+  status            PaymentStatus @default(INITIATED)
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model StockMovement {
+  id        String              @id @default(cuid())
+  productId String
+  type      StockMovementType
+  reason    StockMovementReason
+  quantity  Int
+  orderId   String?
+  createdAt DateTime            @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
