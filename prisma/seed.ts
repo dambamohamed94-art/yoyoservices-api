@@ -218,36 +218,47 @@ async function main() {
   await prisma.category.deleteMany();
 
   for (const category of categoriesData) {
-    await prisma.category.create({
+    const created = await prisma.category.create({
       data: category,
     });
+    console.log("Created category:", created.slug);
   }
 
-  for (const product of productsData) {
-    const category = await prisma.category.findUnique({
-      where: { slug: product.categorySlug },
-    });
+  const allCategories = await prisma.category.findMany();
+  console.log("CATEGORIES COUNT:", allCategories.length);
 
-    if (!category) {
-      console.warn(`Category not found for slug: ${product.categorySlug}`);
-      continue;
-    }
+ 
+ 
+ 
+for (const product of productsData) {
+  console.log("Looking for category:", product.categorySlug);
 
-    await prisma.product.create({
-      data: {
-        name: product.name,
-        slug: product.slug,
-        description: product.description,
-        price: product.price,
-        quantity: product.quantity,
-        stockStatus: product.stockStatus,
-        imageUrl: product.imageUrl,
-        isActive: product.isActive,
-        isFeatured: product.isFeatured,
-        categoryId: category.id,
-      },
-    });
+  const category = await prisma.category.findUnique({
+    where: { slug: product.categorySlug },
+  });
+
+  if (!category) {
+    console.warn(`Category not found for slug: ${product.categorySlug}`);
+    continue;
   }
+
+  await prisma.product.create({
+    data: {
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price: product.price,
+      quantity: product.quantity,
+      stockStatus: product.stockStatus,
+      imageUrl: product.imageUrl,
+      isActive: product.isActive,
+      isFeatured: product.isFeatured,
+      categoryId: category.id,
+    },
+  });
+
+  console.log("Created product:", product.slug);
+}
 
   console.log("Seed completed.");
 }
